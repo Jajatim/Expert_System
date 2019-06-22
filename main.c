@@ -1,57 +1,82 @@
 #include "exp_sys.h"
 
-void queue_tester() {
-    s_queue *q1 = NULL;
-    s_queue *q2 = NULL;
-    
-    char res;
-    res = queue_pop(&q1);
-    printf("popped %c\n",res);
-    queue_add(&q1, 'A');
-    queue_add(&q1, 'B');
-    queue_add(&q1, 'C');
-    res = queue_pop(&q1); printf("popped %c\n",res);
-    res = queue_pop(&q1); printf("popped %c\n",res);
-    res = queue_pop(&q1); printf("popped %c\n",res);
-    res = queue_pop(&q1); printf("popped %c\n",res);
-
-    queue_pop(&q2);
-    queue_add(&q2, 'X');
-    queue_add(&q2, 'Y');
-    queue_add(&q2, 'Z');
-    res = queue_pop(&q2); printf("popped %c\n",res);
-    res = queue_pop(&q2); printf("popped %c\n",res);
-    res = queue_pop(&q2); printf("popped %c\n",res);
-    res = queue_pop(&q2); printf("popped %c\n",res);
-}
-
 int main(int argc, char **argv) {
-    _Bool values[26] = {0};
+    
+    /* DEBUT INIT */
+    
+    //TODO : Tableau des règles en fonction des faits
+    // ex : rules[A] contiendra toutes les règles qui définissent A
+    //  (sera à remplir dans le parser)
+    char rules[26][10][99]; //Rappel : la 3eme dimension correspond à la taille de la chaine
+    for (int fact = 0 ; fact < 26 ; fact++)
+        for (int rule = 0 ; rule < 10 ; rule++)
+            for (int c = 0 ; c < 99 ; c++)
+                rules[fact][rule][c] = '\0'; //Init des chaines à vide
+    strcpy(rules[E][0], "A | B + C => E");
+    strcpy(rules[E][1], "(F | G) + H => E");
 
-    //Test data
-    char s[99] = "A+!B+(C+!(D+!E)+F)+(G+H) => D";
-    values[A] = 1;
-    values[C] = 1;
-    values[E] = 1;
-    values[G] = 1;
-    values[H] = 1;
+    //TODO : Faits initiaux
+    // (sera à remplir dans le parser)
+    _Bool facts[26] = {0};
+    facts[A] = 1;
+    //facts[C] = 1;
+
+    //TODO : Faits demandés
+    // (sera à remplir dans le parser)
+    //  Note : Facilement optimisable, mais bon, c'est juste 26 checks... donc pas très utile...
+    _Bool requests[26] = {0};
+    requests[E] = 1;
+
+    /* FIN INIT */
+    /* DEBUT SOLVER */
+
+    //NOTE : Est-ce que les faits gardent leur nouvelle valeur d'un check à l'autre ?
+    // Ex : 
+    // Init : A = vrai
+    // Règles : A => B et B => C
+    // Demandés : B et C
+    // En cherchant B, on trouve qu'il est vrai (car A est vrai)
+    // Si on garde l'info précédente, en cherchant C il sera vrai
+    //     mais si on repart de l'état initial, il sera faux...
 
 
-    printf("Initial values : \n");
-    for (int i = 0 ; i < 26 ; i++)
-        printf("%s%c=%d", i?", ":"", i+'A', values[i]);
-    printf("\n");
+    if (DEBUG_MAIN) {
+        printf("Initial facts : \n");
+        for (int i = 0 ; i < 26 ; i++)
+            printf("%s%c=%d", i?", ":"", i+'A', facts[i]);
+        printf("\n");
+    }
 
-    int res = rpn((char *)s, (_Bool *)values);
-    if (res == -1)
-        printf("Something has gone wrong...\n");
-    else
-        values[D] = res;
+    for (int req = 0 ; req < 26 ; req++) {
+        //Ignoring the unrequested data
+        if (!requests[req])
+            continue;
+        
+        for (int rule = 0 ; rules[req][rule][0] != '\0' ; rule++) {
+            int res = solver((char *)rules[req][rule], (_Bool *)facts);
+            if (res == -1)
+                printf("Something has gone wrong...\n");
+            else if (res == 1)
+                facts[req] = res;
+        }
+    }
 
-    printf("\nFinal values : \n");
-    for (int i = 0 ; i < 26 ; i++)
-        printf("%s%c=%d", i?", ":"", i+'A', values[i]);
-    printf("\n");
+    if (DEBUG_MAIN) {
+        printf("\nFinal facts : \n");
+        for (int i = 0 ; i < 26 ; i++)
+            printf("%s%c=%d", i?", ":"", i+'A', facts[i]);
+        printf("\n");
+    }
+
+    /* FIN SOLVER */
+
+    //Answering the user
+    for (int req = 0 ; req < 26 ; req++) {
+        if (!requests[req])
+            continue;
+        
+        printf("%c is %s\n", req + 'A', facts[req] ? "true" : "false");
+    }
 
     return 0;
 }
